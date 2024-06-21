@@ -1,74 +1,54 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List
-import webbrowser
 
-# Sample data
-sample_data = [
-    {
-        "id": 1,
-        "company_name": "Company A",
-        "job_title": "Software Engineer",
-        "industry": "Tech",
-        "job_description": "Join our dynamic team!",
-        "experience": "2+ years",
-        "package_upto": "$100,000",
-        "skills": ["Python", "FastAPI", "SQL"],
-        "location": "Remote",
-        "job_type": "Full-time",
-        "email": "info@companyA.com"
-    },
-    {
-        "id": 2,
-        "company_name": "Company B",
-        "job_title": "Data Analyst",
-        "industry": "Analytics",
-        "job_description": "Seeking data enthusiasts!",
-        "experience": "1+ years",
-        "package_upto": "$80,000",
-        "skills": ["SQL", "Excel", "Statistics"],
-        "location": "New York, NY",
-        "job_type": "Part-time",
-        "email": "info@companyB.com"
-    }
-]
+app = FastAPI()
 
-# Pydantic model for job posting
-class JobPosting(BaseModel):
+# Define the data model
+class Job(BaseModel):
     company_name: str
     job_title: str
     industry: str
     job_description: str
-    experience: str
-    package_upto: str
+    experience: int
+    package_upto: float
     skills: List[str]
     location: str
     job_type: str
     email: str
 
-# FastAPI instance
-app = FastAPI()
+# In-memory storage for jobs
+jobs = []
 
-# GET method to fetch all job postings
-@app.get("/jobs", response_model=List[JobPosting])
-async def get_jobs():
-    return sample_data
+@app.post("/jobs/")
+def create_job(job: Job):
+    jobs.append(job)
+    return job
 
-# POST method to create a new job posting
-@app.post("/jobs", response_model=JobPosting)
-async def create_job(job: JobPosting):
-    job_data = job.dict()
-    job_data["id"] = len(sample_data) + 1
-    sample_data.append(job_data)
-    return job_data
+@app.get("/jobs/")
+def read_jobs():
+    return jobs
 
-# Run the app with uvicorn
+@app.get("/jobs/{job_id}")
+def read_job(job_id: int):
+    if job_id >= len(jobs) or job_id < 0:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return jobs[job_id]
+
+@app.put("/jobs/{job_id}")
+def update_job(job_id: int, job: Job):
+    if job_id >= len(jobs) or job_id < 0:
+        raise HTTPException(status_code=404, detail="Job not found")
+    jobs[job_id] = job
+    return job
+
+@app.delete("/jobs/{job_id}")
+def delete_job(job_id: int):
+    if job_id >= len(jobs) or job_id < 0:
+        raise HTTPException(status_code=404, detail="Job not found")
+    deleted_job = jobs.pop(job_id)
+    return deleted_job
+
 if __name__ == "__main__":
     import uvicorn
-
-    # Open Swagger UI in the default web browser
-    url = "http://localhost:8000/docs"
-    webbrowser.open(url)
-
-    # Start the FastAPI application
     uvicorn.run(app, host="0.0.0.0", port=8000)
